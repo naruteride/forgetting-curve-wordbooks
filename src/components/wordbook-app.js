@@ -120,14 +120,15 @@ class WordbookApp extends HTMLElement {
 			return;
 		}
 
+		const route = this.getRoute();
 		const shell = document.createElement("app-shell");
 		shell.user = this.user;
-		shell.append(this.createRouteView());
+		shell.hideHeader = route.name === "study" && Boolean(this.studySession);
+		shell.append(this.createRouteView(route));
 		root.append(shell);
 	}
 
-	createRouteView() {
-		const route = this.getRoute();
+	createRouteView(route = this.getRoute()) {
 		if (route.name === "wordbook") {
 			const view = document.createElement("wordbook-view");
 			view.user = this.user;

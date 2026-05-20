@@ -287,8 +287,6 @@ class WordbookView extends HTMLElement {
 		this.shadowRoot.getElementById("start-study-button").addEventListener("click", () => {
 			this.shadowRoot.querySelector("study-setup-dialog").openDialog([this.wordbook], {
 				wordbookIds: [this.wordbookId],
-				sortMode: this.sortMode,
-				useForgettingCurve: this.useForgettingCurve,
 			});
 		});
 		this.shadowRoot.getElementById("search-input").addEventListener("input", (event) => {

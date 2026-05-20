@@ -9,6 +9,13 @@ const fieldLabels = {
 	example: "예문",
 };
 
+const storageKey = "forgetting-curve-wordbooks:study-setup";
+const defaultSettings = {
+	sortMode: "random",
+	useForgettingCurve: true,
+	visibleFields: ["term"],
+};
+
 /**
  * 학습 시작 직전 단어장, 정렬, 망각곡선, 카드 앞면 노출 항목을 선택하는 대화상자입니다.
  */
@@ -34,15 +41,16 @@ class StudySetupDialog extends HTMLElement {
 	 */
 	openDialog(wordbooks, defaults = {}) {
 		this.wordbooks = wordbooks;
-		this.defaults = defaults;
+		this.defaults = this.getEffectiveDefaults(defaults);
 		this.error = "";
 		this.render();
 		this.shadowRoot.querySelector("dialog").showModal();
 	}
 
 	render() {
-		const selectedIds = this.defaults.wordbookIds || this.wordbooks.map((wordbook) => wordbook.id);
-		const visibleFields = this.defaults.visibleFields || ["term"];
+		const availableIds = this.wordbooks.map((wordbook) => wordbook.id);
+		const selectedIds = (this.defaults.wordbookIds || availableIds).filter((id) => availableIds.includes(id));
+		const visibleFields = this.defaults.visibleFields || defaultSettings.visibleFields;
 		this.shadowRoot.innerHTML = `
 			<style>
 				${sharedStyles}
@@ -135,6 +143,9 @@ class StudySetupDialog extends HTMLElement {
 
 		this.shadowRoot.getElementById("close-button").addEventListener("click", () => this.close());
 		this.shadowRoot.getElementById("cancel-button").addEventListener("click", () => this.close());
+		this.shadowRoot.getElementById("study-form").addEventListener("change", (event) => {
+			this.handleFormChange(event);
+		});
 		this.shadowRoot.getElementById("study-form").addEventListener("submit", (event) => {
 			this.handleSubmit(event);
 		});
@@ -165,12 +176,76 @@ class StudySetupDialog extends HTMLElement {
 		}
 
 		this.close();
-		emit(this, "start-study", {
+		const settings = {
 			wordbookIds,
-			sortMode: String(form.get("sort-mode") || "created-desc"),
+			sortMode: String(form.get("sort-mode") || defaultSettings.sortMode),
 			useForgettingCurve: form.get("use-forgetting-curve") === "on",
 			visibleFields,
-		});
+		};
+		this.saveSettings(settings);
+		emit(this, "start-study", settings);
+	}
+
+	handleFormChange(event) {
+		const formElement = event.currentTarget;
+		const form = new FormData(formElement);
+		const visibleFields = form.getAll("visible-field");
+
+		if (event.target?.name === "visible-field" && !hasVisibleStudyField(visibleFields)) {
+			event.target.checked = true;
+		}
+
+		this.saveSettings(this.getSettingsFromForm(formElement));
+	}
+
+	getEffectiveDefaults(defaults) {
+		const stored = this.loadSettings();
+		return {
+			wordbookIds: this.wordbooks.map((wordbook) => wordbook.id),
+			...defaultSettings,
+			...defaults,
+			...stored,
+		};
+	}
+
+	getSettingsFromForm(formElement) {
+		const form = new FormData(formElement);
+		return {
+			wordbookIds: form.getAll("wordbook"),
+			sortMode: String(form.get("sort-mode") || defaultSettings.sortMode),
+			useForgettingCurve: form.get("use-forgetting-curve") === "on",
+			visibleFields: form.getAll("visible-field"),
+		};
+	}
+
+	loadSettings() {
+		try {
+			const value = window.localStorage.getItem(storageKey);
+			if (!value) {
+				return null;
+			}
+			const parsed = JSON.parse(value);
+			return {
+				wordbookIds: Array.isArray(parsed.wordbookIds) ? parsed.wordbookIds : undefined,
+				sortMode: typeof parsed.sortMode === "string" ? parsed.sortMode : undefined,
+				useForgettingCurve:
+					typeof parsed.useForgettingCurve === "boolean" ? parsed.useForgettingCurve : undefined,
+				visibleFields:
+					Array.isArray(parsed.visibleFields) && hasVisibleStudyField(parsed.visibleFields)
+						? parsed.visibleFields
+						: undefined,
+			};
+		} catch {
+			return null;
+		}
+	}
+
+	saveSettings(settings) {
+		try {
+			window.localStorage.setItem(storageKey, JSON.stringify(settings));
+		} catch {
+			// 저장 공간이 막힌 환경에서는 현재 팝업 동작만 유지합니다.
+		}
 	}
 }
 

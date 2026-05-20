@@ -5,7 +5,7 @@ import {
 } from "../services/firebase-service.js";
 import { applyStudyAnswer, buildStudyQueue } from "../domain/study-scheduler.js";
 import { sharedStyles } from "../styles/shared-styles.js";
-import { emit, escapeHtml, formatDate, renderLines, setButtonLoading } from "./component-utils.js";
+import { escapeHtml, formatDate, renderLines, setButtonLoading } from "./component-utils.js";
 
 const fieldLabels = {
 	term: "단어",
@@ -111,7 +111,7 @@ class StudyView extends HTMLElement {
 					align-items: center;
 					display: grid;
 					gap: 1rem;
-					grid-template-columns: auto minmax(0, 1fr);
+					grid-template-columns: minmax(0, 1fr);
 				}
 
 				.progress-wrap {
@@ -243,7 +243,6 @@ class StudyView extends HTMLElement {
 
 			<section class="study" aria-label="학습 화면">
 				<div class="topbar">
-					<button class="ghost" id="home-button" type="button">Home</button>
 					${this.renderProgress()}
 				</div>
 
@@ -352,7 +351,6 @@ class StudyView extends HTMLElement {
 	}
 
 	bindEvents() {
-		this.shadowRoot.getElementById("home-button")?.addEventListener("click", () => emit(this, "navigate-home"));
 		const card = this.shadowRoot.getElementById("study-card");
 		if (card) {
 			card.addEventListener("click", () => this.toggleCard());
