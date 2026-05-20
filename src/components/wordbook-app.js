@@ -38,7 +38,6 @@ class WordbookApp extends HTMLElement {
 			this.render();
 		});
 		window.addEventListener("hashchange", this.handleHashChange);
-		this.shadowRoot.addEventListener("navigate-home", () => this.navigateHome());
 		this.shadowRoot.addEventListener("open-wordbook", (event) => {
 			this.openWordbook(event.detail.wordbookId);
 		});
@@ -57,12 +56,6 @@ class WordbookApp extends HTMLElement {
 	handleHashChange = () => {
 		this.render();
 	};
-
-	navigateHome() {
-		this.studySession = null;
-		window.location.hash = "#/";
-		this.render();
-	}
 
 	openWordbook(wordbookId) {
 		window.location.hash = `#/wordbooks/${encodeURIComponent(wordbookId)}`;

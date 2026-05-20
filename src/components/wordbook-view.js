@@ -8,7 +8,7 @@ import {
 } from "../services/firebase-service.js";
 import { filterWords, parseLines, sortWords } from "../domain/study-scheduler.js";
 import { sharedStyles } from "../styles/shared-styles.js";
-import { emit, escapeHtml, formatDate, renderLines, setButtonLoading } from "./component-utils.js";
+import { escapeHtml, formatDate, renderLines, setButtonLoading } from "./component-utils.js";
 
 const searchScopes = [
 	["all", "전체"],
@@ -195,7 +195,6 @@ class WordbookView extends HTMLElement {
 
 			<section class="header" aria-labelledby="wordbook-title">
 				<div>
-					<button class="ghost" id="back-button" type="button">Home</button>
 					<h1 id="wordbook-title">${escapeHtml(this.wordbook?.name || "단어장")}</h1>
 					<p class="muted">${this.words.length}개 단어</p>
 				</div>
@@ -282,7 +281,6 @@ class WordbookView extends HTMLElement {
 	}
 
 	bindEvents() {
-		this.shadowRoot.getElementById("back-button").addEventListener("click", () => emit(this, "navigate-home"));
 		this.shadowRoot.getElementById("add-word-button").addEventListener("click", () => this.openWordDialog(null));
 		this.shadowRoot.getElementById("start-study-button").addEventListener("click", () => {
 			this.shadowRoot.querySelector("study-setup-dialog").openDialog([this.wordbook], {

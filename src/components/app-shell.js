@@ -1,6 +1,5 @@
 import { signOutUser } from "../services/firebase-service.js";
 import { sharedStyles } from "../styles/shared-styles.js";
-import { emit } from "./component-utils.js";
 
 /**
  * 로그인 이후 공통 레이아웃을 제공하는 앱 셸입니다.
@@ -48,7 +47,6 @@ class AppShell extends HTMLElement {
 			: `
 				<header>
 					<div class="header-inner">
-						<button class="brand" id="home-button" type="button">망각곡선 단어장</button>
 						<div class="cluster">
 							<span class="user muted">${email}</span>
 							<button class="ghost" id="logout-button" type="button">로그아웃</button>
@@ -81,17 +79,8 @@ class AppShell extends HTMLElement {
 					align-items: center;
 					display: flex;
 					gap: 1rem;
-					justify-content: space-between;
+					justify-content: flex-end;
 					padding: 1rem;
-				}
-
-				.brand {
-					background: transparent;
-					color: #17201b;
-					font-size: 1rem;
-					font-weight: 800;
-					min-height: 44px;
-					padding-inline: 0;
 				}
 
 				main {
@@ -117,9 +106,6 @@ class AppShell extends HTMLElement {
 				<slot></slot>
 			</main>
 		`;
-		this.shadowRoot.getElementById("home-button")?.addEventListener("click", () => {
-			emit(this, "navigate-home");
-		});
 		this.shadowRoot.getElementById("logout-button")?.addEventListener("click", async () => {
 			await signOutUser();
 		});
