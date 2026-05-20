@@ -68,9 +68,6 @@ class AppShell extends HTMLElement {
 					backdrop-filter: blur(14px);
 					background: rgba(247, 245, 239, 0.86);
 					border-bottom: 1px solid #e4ddcf;
-					position: sticky;
-					top: 0;
-					z-index: 5;
 				}
 
 				.header-inner,
