@@ -31,6 +31,7 @@ class StudyView extends HTMLElement {
 		this.completed = 0;
 		this.loading = true;
 		this.error = "";
+		this.cardRotation = 0;
 		this.flipped = false;
 		this.answering = false;
 		this.touchStartX = 0;
@@ -69,6 +70,8 @@ class StudyView extends HTMLElement {
 		this.loading = true;
 		this.error = "";
 		this.completed = 0;
+		this.cardRotation = 0;
+		this.flipped = false;
 		this.render();
 
 		try {
@@ -139,6 +142,7 @@ class StudyView extends HTMLElement {
 					min-height: min(62vh, 620px);
 					padding: 0;
 					position: relative;
+					transform: rotateY(var(--card-rotation, 0deg));
 					transform-style: preserve-3d;
 					transition:
 						opacity 220ms ease,
@@ -146,18 +150,14 @@ class StudyView extends HTMLElement {
 					width: 100%;
 				}
 
-				.card.is-flipped {
-					transform: rotateY(180deg);
-				}
-
 				.card.remembered {
 					opacity: 0;
-					transform: translateX(42px) scale(0.98);
+					transform: translateX(42px) scale(0.98) rotateY(var(--card-rotation, 0deg));
 				}
 
 				.card.forgotten {
 					opacity: 0;
-					transform: translateX(-42px) scale(0.98);
+					transform: translateX(-42px) scale(0.98) rotateY(var(--card-rotation, 0deg));
 				}
 
 				.face {
@@ -284,11 +284,12 @@ class StudyView extends HTMLElement {
 		return `
 			<div class="stage">
 				<div
-					class="card ${this.flipped ? "is-flipped" : ""}"
+					class="card"
 					id="study-card"
 					role="button"
 					tabindex="0"
 					aria-pressed="${this.flipped ? "true" : "false"}"
+					style="--card-rotation: ${this.cardRotation}deg;"
 					aria-label="카드 앞뒤 전환"
 				>
 					<div class="face front">
@@ -366,7 +367,7 @@ class StudyView extends HTMLElement {
 			card.addEventListener("touchend", (event) => {
 				const diff = event.changedTouches[0].clientX - this.touchStartX;
 				if (Math.abs(diff) > 42) {
-					this.toggleCard();
+					this.toggleCard(diff > 0 ? 1 : -1);
 				}
 			});
 		}
@@ -378,7 +379,7 @@ class StudyView extends HTMLElement {
 		});
 	}
 
-	toggleCard() {
+	toggleCard(direction = 1) {
 		if (this.answering) {
 			return;
 		}
@@ -386,8 +387,9 @@ class StudyView extends HTMLElement {
 		if (!card) {
 			return;
 		}
-		this.flipped = !this.flipped;
-		card.classList.toggle("is-flipped", this.flipped);
+		this.cardRotation += direction * 180;
+		this.flipped = Math.abs(this.cardRotation / 180) % 2 === 1;
+		card.style.setProperty("--card-rotation", `${this.cardRotation}deg`);
 		card.setAttribute("aria-pressed", String(this.flipped));
 	}
 
@@ -433,6 +435,7 @@ class StudyView extends HTMLElement {
 			if (remembered) {
 				this.completed += 1;
 			}
+			this.cardRotation = 0;
 			this.flipped = false;
 			this.answering = false;
 			this.render();
