@@ -32,7 +32,7 @@ class StudyView extends HTMLElement {
 		this.loading = true;
 		this.error = "";
 		this.flipped = false;
-		this.animating = "";
+		this.answering = false;
 		this.touchStartX = 0;
 	}
 
@@ -284,7 +284,7 @@ class StudyView extends HTMLElement {
 		return `
 			<div class="stage">
 				<div
-					class="card ${this.flipped ? "is-flipped" : ""} ${this.animating}"
+					class="card ${this.flipped ? "is-flipped" : ""}"
 					id="study-card"
 					role="button"
 					tabindex="0"
@@ -379,28 +379,42 @@ class StudyView extends HTMLElement {
 	}
 
 	toggleCard() {
+		if (this.answering) {
+			return;
+		}
+		const card = this.shadowRoot.getElementById("study-card");
+		if (!card) {
+			return;
+		}
 		this.flipped = !this.flipped;
-		this.render();
+		card.classList.toggle("is-flipped", this.flipped);
+		card.setAttribute("aria-pressed", String(this.flipped));
 	}
 
 	async handleAnswer(event, remembered) {
 		const button = event.currentTarget;
 		const currentWord = this.queue[0];
-		if (!currentWord) {
+		const card = this.shadowRoot.getElementById("study-card");
+		if (!currentWord || !card || this.answering) {
 			return;
 		}
 
 		try {
+			this.answering = true;
 			setButtonLoading(button, true);
-			this.animating = remembered ? "remembered" : "forgotten";
-			this.render();
-			await updateStudyResult({
+			this.setAnswerButtonsDisabled(true);
+			const transitionDone = this.waitForCardTransition(card);
+			const saveResult = updateStudyResult({
 				wordbookId: currentWord.wordbookId,
 				wordId: currentWord.id,
 				uid: this.user.uid,
 				remembered,
-			});
-			await new Promise((resolve) => setTimeout(resolve, 220));
+			}).then(
+				() => null,
+				(error) => error
+			);
+			card.classList.add(remembered ? "remembered" : "forgotten");
+			await transitionDone;
 			const result = applyStudyAnswer(this.queue, {
 				currentIndex: 0,
 				remembered,
@@ -420,15 +434,46 @@ class StudyView extends HTMLElement {
 				this.completed += 1;
 			}
 			this.flipped = false;
-			this.animating = "";
+			this.answering = false;
 			this.render();
+			const saveError = await saveResult;
+			if (saveError) {
+				throw saveError;
+			}
 		} catch {
-			this.animating = "";
+			this.answering = false;
 			this.error = "학습 기록을 저장하지 못했습니다.";
 			this.render();
 		} finally {
 			setButtonLoading(button, false);
 		}
+	}
+
+	setAnswerButtonsDisabled(disabled) {
+		this.shadowRoot.getElementById("remember-button")?.toggleAttribute("disabled", disabled);
+		this.shadowRoot.getElementById("forget-button")?.toggleAttribute("disabled", disabled);
+	}
+
+	waitForCardTransition(card) {
+		return new Promise((resolve) => {
+			let done = false;
+			const finish = () => {
+				if (done) {
+					return;
+				}
+				done = true;
+				window.clearTimeout(timer);
+				card.removeEventListener("transitionend", handleTransitionEnd);
+				resolve();
+			};
+			const handleTransitionEnd = (event) => {
+				if (event.target === card && event.propertyName === "transform") {
+					finish();
+				}
+			};
+			const timer = window.setTimeout(finish, 520);
+			card.addEventListener("transitionend", handleTransitionEnd);
+		});
 	}
 }
 
