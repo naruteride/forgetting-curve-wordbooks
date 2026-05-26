@@ -152,12 +152,12 @@ class StudyView extends HTMLElement {
 
 				.card.remembered {
 					opacity: 0;
-					transform: translateX(42px) scale(0.98) rotateY(var(--card-rotation, 0deg));
+					transform: translateX(42px) scale(0.98) rotateY(0deg);
 				}
 
 				.card.forgotten {
 					opacity: 0;
-					transform: translateX(-42px) scale(0.98) rotateY(var(--card-rotation, 0deg));
+					transform: translateX(-42px) scale(0.98) rotateY(0deg);
 				}
 
 				.face {
