@@ -1,11 +1,13 @@
 import {
 	createWord,
+	createWords,
 	deleteWord,
 	getUserWordStats,
 	getWordbook,
 	getWordsFromWordbook,
 	updateWord,
 } from "../services/firebase-service.js";
+import { parseCsvWords } from "../domain/csv-importer.js";
 import { filterWords, parseLines, sortWords } from "../domain/study-scheduler.js";
 import { sharedStyles } from "../styles/shared-styles.js";
 import { escapeHtml, formatDate, renderLines, setButtonLoading } from "./component-utils.js";
@@ -16,6 +18,7 @@ const searchScopes = [
 	["pronunciation", "발음"],
 	["meaning", "한국어 뜻"],
 	["example", "예문"],
+	["synonym", "헷갈리는 유의어"],
 ];
 
 /**
@@ -37,6 +40,8 @@ class WordbookView extends HTMLElement {
 		this.useForgettingCurve = false;
 		this.editingWord = null;
 		this.deletingWord = null;
+		this.uploadingCsv = false;
+		this.importSummary = "";
 	}
 
 	set user(value) {
@@ -115,6 +120,11 @@ class WordbookView extends HTMLElement {
 					gap: 0.75rem;
 					grid-template-columns: minmax(180px, 1fr) minmax(140px, 180px) minmax(160px, 220px) auto;
 					margin-bottom: 1rem;
+				}
+
+				.import-summary {
+					color: #1f6f5b;
+					font-weight: 700;
 				}
 
 				.curve-toggle {
@@ -200,11 +210,14 @@ class WordbookView extends HTMLElement {
 				</div>
 				<div class="cluster" style="align-self: end; justify-content: flex-end;">
 					<button class="secondary" id="start-study-button" type="button" ${this.words.length === 0 ? "disabled" : ""}>이 단어장 학습</button>
+					<button class="secondary" id="upload-csv-button" type="button" ${this.loading || this.uploadingCsv ? "disabled" : ""}>${this.uploadingCsv ? "업로드 중" : "CSV 업로드"}</button>
+					<input id="csv-file-input" type="file" accept=".csv,text/csv" hidden />
 					<button class="primary" id="add-word-button" type="button">단어 추가</button>
 				</div>
 			</section>
 
 			${this.error ? `<p class="error" role="alert">${this.error}</p>` : ""}
+			${this.importSummary ? `<p class="import-summary" role="status">${escapeHtml(this.importSummary)}</p>` : ""}
 
 			<section class="panel" aria-label="단어 검색과 필터">
 				<div class="controls">
@@ -255,6 +268,10 @@ class WordbookView extends HTMLElement {
 						예문
 						<textarea id="example-input" name="examples" placeholder="줄바꿈으로 여러 개 입력">${escapeHtml((this.editingWord?.examples || []).join("\n"))}</textarea>
 					</label>
+					<label>
+						헷갈리는 유의어
+						<textarea id="confusing-synonyms-input" name="confusingSynonyms" placeholder="줄바꿈으로 여러 개 입력">${escapeHtml((this.editingWord?.confusingSynonyms || []).join("\n"))}</textarea>
+					</label>
 					<div class="dialog-actions">
 						<button class="secondary" type="button" id="word-cancel-button">취소</button>
 						<button class="primary" type="submit" id="word-save-button">저장</button>
@@ -282,6 +299,12 @@ class WordbookView extends HTMLElement {
 
 	bindEvents() {
 		this.shadowRoot.getElementById("add-word-button").addEventListener("click", () => this.openWordDialog(null));
+		this.shadowRoot.getElementById("upload-csv-button").addEventListener("click", () => {
+			this.shadowRoot.getElementById("csv-file-input").click();
+		});
+		this.shadowRoot.getElementById("csv-file-input").addEventListener("change", (event) => {
+			this.handleCsvUpload(event);
+		});
 		this.shadowRoot.getElementById("start-study-button").addEventListener("click", () => {
 			this.shadowRoot.querySelector("study-setup-dialog").openDialog([this.wordbook], {
 				wordbookIds: [this.wordbookId],
@@ -365,6 +388,8 @@ class WordbookView extends HTMLElement {
 					<dd>${renderLines(word.meanings)}</dd>
 					<dt>예문</dt>
 					<dd>${renderLines(word.examples)}</dd>
+					<dt>유의어</dt>
+					<dd>${renderLines(word.confusingSynonyms)}</dd>
 				</dl>
 			</article>
 		`;
@@ -402,6 +427,7 @@ class WordbookView extends HTMLElement {
 			pronunciations: parseLines(form.get("pronunciations")),
 			meanings: parseLines(form.get("meanings")),
 			examples: parseLines(form.get("examples")),
+			confusingSynonyms: parseLines(form.get("confusingSynonyms")),
 		};
 
 		try {
@@ -419,6 +445,38 @@ class WordbookView extends HTMLElement {
 			this.render();
 		} finally {
 			setButtonLoading(button, false);
+		}
+	}
+
+	async handleCsvUpload(event) {
+		const inputElement = event.currentTarget;
+		const file = inputElement.files?.[0];
+
+		if (!file) {
+			return;
+		}
+
+		try {
+			this.uploadingCsv = true;
+			this.error = "";
+			this.importSummary = "";
+			this.render();
+
+			const csvText = await file.text();
+			const result = parseCsvWords(csvText, this.words);
+			if (result.words.length > 0) {
+				await createWords(this.wordbookId, result.words, this.user);
+			}
+			this.importSummary = `추가 ${result.words.length}개, 중복 제외 ${result.duplicateCount}개, 무효 행 ${result.invalidCount}개`;
+			if (result.words.length > 0) {
+				await this.load();
+			}
+		} catch (error) {
+			this.error = error instanceof Error ? error.message : "CSV 파일을 업로드하지 못했습니다.";
+		} finally {
+			this.uploadingCsv = false;
+			inputElement.value = "";
+			this.render();
 		}
 	}
 

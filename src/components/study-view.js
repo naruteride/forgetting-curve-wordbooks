@@ -12,6 +12,7 @@ const fieldLabels = {
 	pronunciation: "발음",
 	meaning: "뜻",
 	example: "예문",
+	synonym: "헷갈리는 유의어",
 };
 
 /**
@@ -322,6 +323,7 @@ class StudyView extends HTMLElement {
 			${this.renderField(word, "pronunciation")}
 			${this.renderField(word, "meaning")}
 			${this.renderField(word, "example")}
+			${this.renderField(word, "synonym")}
 			<div class="field">
 				<span class="field-label">학습 기록</span>
 				<span class="field-value">외운 횟수 ${word.studyCount || 0} · 마지막 학습 ${formatDate(word.lastStudiedAt)}</span>
@@ -342,6 +344,7 @@ class StudyView extends HTMLElement {
 			pronunciation: word.pronunciations,
 			meaning: word.meanings,
 			example: word.examples,
+			synonym: word.confusingSynonyms,
 		}[field];
 		return `
 			<div class="field">

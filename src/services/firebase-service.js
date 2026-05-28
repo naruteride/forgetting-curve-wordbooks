@@ -2,6 +2,7 @@ import { firebaseConfig } from "/config/firebase-config.js";
 import { normalizeWord, parseLines, toDate } from "../domain/study-scheduler.js";
 
 let firebaseContextPromise = null;
+const firestoreBatchLimit = 450;
 
 /**
  * Firebase CDN 모듈을 필요한 순간에 불러오고 앱 인스턴스를 초기화합니다.
@@ -280,6 +281,46 @@ export async function createWord(wordbookId, input, user) {
 }
 
 /**
+ * 단어장에 여러 단어를 배치로 추가합니다.
+ *
+ * CSV 업로드처럼 한 번에 많은 단어를 추가할 때 Firestore 쓰기 배치 제한을 넘지 않도록
+ * 안전한 크기로 나누어 저장합니다. 각 단어는 단건 추가와 같은 호환 필드 구조를 사용합니다.
+ *
+ * @param {string} wordbookId 단어장 ID입니다.
+ * @param {object[]} inputs 단어 입력값 배열입니다.
+ * @param {object} user Firebase Auth 사용자입니다.
+ * @returns {Promise<string[]>} 생성된 단어 ID 배열입니다.
+ */
+export async function createWords(wordbookId, inputs, user) {
+	if (!Array.isArray(inputs) || inputs.length === 0) {
+		return [];
+	}
+
+	const { db, collection, doc, serverTimestamp, writeBatch } = await getFirebaseContext();
+	const wordCollection = collection(db, "wordbooks", wordbookId, "words");
+	const ids = [];
+
+	for (let start = 0; start < inputs.length; start += firestoreBatchLimit) {
+		const batch = writeBatch(db);
+		inputs.slice(start, start + firestoreBatchLimit).forEach((input) => {
+			const docRef = doc(wordCollection);
+			ids.push(docRef.id);
+			batch.set(
+				docRef,
+				toWordPayload(input, {
+					createdBy: user.uid,
+					createdAt: serverTimestamp(),
+					updatedAt: serverTimestamp(),
+				})
+			);
+		});
+		await batch.commit();
+	}
+
+	return ids;
+}
+
+/**
  * 기존 단어를 수정합니다.
  *
  * @param {string} wordbookId 단어장 ID입니다.
@@ -399,12 +440,14 @@ function toWordPayload(input, extra = {}) {
 	const pronunciations = parseLines(input.pronunciations);
 	const meanings = parseLines(input.meanings);
 	const examples = parseLines(input.examples);
+	const confusingSynonyms = parseLines(input.confusingSynonyms);
 
 	return {
 		term,
 		pronunciations,
 		meanings,
 		examples,
+		confusingSynonyms,
 		spelling: term,
 		pronunciation: pronunciations.join("\n"),
 		...extra,

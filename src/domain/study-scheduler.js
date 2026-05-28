@@ -101,6 +101,10 @@ export function normalizeWord(raw, options = {}) {
 	const term = String(raw.term || raw.spelling || raw.kanji || "").trim();
 	const meanings = parseLines(raw.meanings);
 	const examples = parseLines(raw.examples);
+	const confusingSynonyms = [
+		...parseLines(raw.confusingSynonyms),
+		...parseLines(raw.confusingSynonym),
+	].filter((value, index, list) => list.indexOf(value) === index);
 	const createdAt = toDate(raw.createdAt) || new Date(0);
 	const updatedAt = toDate(raw.updatedAt);
 	const lastStudiedAt = toDate(raw.lastStudiedAt);
@@ -113,6 +117,7 @@ export function normalizeWord(raw, options = {}) {
 		pronunciations,
 		meanings,
 		examples,
+		confusingSynonyms,
 		createdAt,
 		updatedAt,
 		studyCount: Number(raw.studyCount || 0),
@@ -143,7 +148,7 @@ export function shouldShowByForgettingCurve(word, now = new Date()) {
  * 단어 객체에서 검색 대상 문자열을 추출합니다.
  *
  * @param {object} word 표준 단어 객체입니다.
- * @param {"all"|"term"|"pronunciation"|"meaning"|"example"} scope 검색 범위입니다.
+ * @param {"all"|"term"|"pronunciation"|"meaning"|"example"|"synonym"} scope 검색 범위입니다.
  * @returns {string} 검색에 사용할 문자열입니다.
  */
 export function getSearchText(word, scope = "all") {
@@ -152,7 +157,14 @@ export function getSearchText(word, scope = "all") {
 		pronunciation: word.pronunciations || [],
 		meaning: word.meanings || [],
 		example: word.examples || [],
-		all: [word.term, ...(word.pronunciations || []), ...(word.meanings || []), ...(word.examples || [])],
+		synonym: word.confusingSynonyms || [],
+		all: [
+			word.term,
+			...(word.pronunciations || []),
+			...(word.meanings || []),
+			...(word.examples || []),
+			...(word.confusingSynonyms || []),
+		],
 	};
 	return (textMap[scope] || textMap.all).join("\n").toLowerCase();
 }
@@ -163,7 +175,7 @@ export function getSearchText(word, scope = "all") {
  * @param {object[]} words 표준 단어 배열입니다.
  * @param {object} options 필터 옵션입니다.
  * @param {string} [options.query] 검색어입니다.
- * @param {"all"|"term"|"pronunciation"|"meaning"|"example"} [options.scope] 검색 범위입니다.
+ * @param {"all"|"term"|"pronunciation"|"meaning"|"example"|"synonym"} [options.scope] 검색 범위입니다.
  * @param {boolean} [options.useForgettingCurve] 망각곡선 적용 여부입니다.
  * @param {Date} [options.now] 기준 날짜입니다.
  * @returns {object[]} 필터링된 단어 배열입니다.

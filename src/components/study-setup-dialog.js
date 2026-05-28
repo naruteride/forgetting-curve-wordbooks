@@ -7,6 +7,7 @@ const fieldLabels = {
 	pronunciation: "발음",
 	meaning: "한국어 뜻",
 	example: "예문",
+	synonym: "헷갈리는 유의어",
 };
 
 const storageKey = "forgetting-curve-wordbooks:study-setup";

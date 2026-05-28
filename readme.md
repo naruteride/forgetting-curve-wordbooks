@@ -50,6 +50,7 @@ npm run build
 - `pronunciations`: 발음 배열
 - `meanings`: 한국어 뜻 배열
 - `examples`: 예문 배열
+- `confusingSynonyms`: 헷갈리는 유의어 배열
 - `createdBy`: 생성한 사용자 UID
 - `createdAt`: 생성 시각
 - `updatedAt`: 수정 시각
