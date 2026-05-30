@@ -143,7 +143,10 @@ class StudyView extends HTMLElement {
 					min-height: min(62vh, 620px);
 					padding: 0;
 					position: relative;
-					transform: rotateY(var(--card-rotation, 0deg));
+					transform:
+						translateX(var(--card-exit-x, 0))
+						scale(var(--card-exit-scale, 1))
+						rotateY(var(--card-rotation, 0deg));
 					transform-style: preserve-3d;
 					transition:
 						opacity 220ms ease,
@@ -153,12 +156,14 @@ class StudyView extends HTMLElement {
 
 				.card.remembered {
 					opacity: 0;
-					transform: translateX(42px) scale(0.98) rotateY(0deg);
+					--card-exit-x: 42px;
+					--card-exit-scale: 0.98;
 				}
 
 				.card.forgotten {
 					opacity: 0;
-					transform: translateX(-42px) scale(0.98) rotateY(0deg);
+					--card-exit-x: -42px;
+					--card-exit-scale: 0.98;
 				}
 
 				.face {
